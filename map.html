@@ -1,15 +1,68 @@
 <html>
 <head>
 <style>
-* { user-select: none; } /* note: only chrome and oepra */
+    * { user-select: none; font-size: 20px; } /* note: only chrome and oepra */
+    a {
+        display: inline-block;
+        padding: 20px 0;
+        background-color: #a0d0d0;
+        margin: 10px 4px;
+        width: 400px;
+        color: black;
+        text-decoration: none;
+    }
+    a:hover { background-color: #407070; color: #a0d0d0; }
+
+    #mapcontainer { display: inline-block; vertical-align: top; height: 600px; margin-top: 1px; }
+
+    #options {
+        display: inline-block;
+        background-color: #90d090;
+        width: 200px;
+        height: 600px;
+        vertical-align: top;
+        margin: 0 6px;
+    }
+    #options p {
+        width: 100%;
+        padding: 15px 0;
+        margin: 0;
+        cursor: pointer;
+    }
+    #options p.active { background-color: #f06060 }
+    #options p.rightactive { background-color: #90b0e8 }
+    #options p.both { background: linear-gradient(#f06060, #90b0e8) }
+
+    #options p:hover { background: #508050; color: #90d090; }
+    #options p.active:hover span { color: #f06060; }
+    #options p.rightactive:hover span { color: #90b0e8; }
+    #options p.both:hover span {
+        background: linear-gradient(#f06060, #f06060, #90b0e8, #90b0e8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    body { text-align: center }
+    #downloadcontainer { display: block; width: 100%; text-align: center; }
+    #container { height: 100% }
 </style>
 </head>
-</body>
-<canvas width="900" height="900" id="canvas"></canvas>
-<p>
-loop controls: z = less, x = more
-</p>
-<script src="map.js"></script>
-<a href="data:text/html,test%20test%0D%0Afasfjl" download="test.txt">download</a>
+<body>
+<div id="container">
+    <div id="mapcontainer" oncontextmenu="return false;">
+        <canvas width="600" height="600" id="canvas"></canvas>
+        <div id="options">
+            <p id="starttileright"><span class="dontclick">floor</span></p>
+            <p id="starttileleft"><span class="dontclick">wall</span></p>
+            <p><span class="dontclick">water</span></p>
+            <p><span class="dontclick">ramp</span></p>
+        </div>
+    </div>
+    <div id="downloadcontainer">
+        <a id="download" href="data:text/html,test%20test%0D%0Afasfjl" download="map.obj">download mesh</a>
+        <a id="download2" href="data:text/html,test%20test%0D%0Afasfjl" download="MapInfo.cs">download info</a>
+    </div>
+    <script src="map.js"></script>
+</div>
 </body>
 </html>
