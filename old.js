@@ -1,3 +1,4 @@
+
 let c = document.getElementById("canvas");
 let ctx = c.getContext("2d");
 
@@ -360,7 +361,7 @@ function trace (x, y, inside, n) {
                 (current[1] + 1) * (tilesize + margin) + tilesize/2 + 4,
             );
             vertexmap[current[0]][current[1] + 1] = val;
-            vertextypemap[current[0]][current[1] + 1] = insides.length * -1;
+            vertextypemap[current[0]][current[1] + 1] = -1 * insides.length;
         }
 
         if (access(current) && isWallAbove) { // we're turning ccwise
@@ -411,96 +412,6 @@ function trace (x, y, inside, n) {
          insides.push({ g: new_geometry.slice(), o: n, s: [x, y + 1]});
     } else {
         points.push(new_geometry.slice());
-    }
-}
-
-function connect_region (i) {
-    current = insides[i].s.slice();
-
-    ctx.fillStyle = "lime";
-    ctx.fillRect(
-        current[0] * (tilesize + margin) + marker*2,
-        (current[1]) * (tilesize + margin) + marker*2,
-        tilesize - marker*4,
-        tilesize - marker*4
-    );
-
-    do {
-        current[1]++;
-    } while (scanmap[current[0]][current[1]] == -1);//  access(current) == false)
-    do {
-        current[1]++;
-    } while (access(current) == true)
-
-    ctx.fillStyle = "yellow";
-    ctx.fillRect(
-        current[0] * (tilesize + margin) + marker*2,
-        (current[1]) * (tilesize + margin) + marker*2,
-        tilesize - marker*4,
-        tilesize - marker*4
-    );
-
-    let new_point = getCorner(current, NW);
-    let pos = vertexmap[current[0]][current[1]];
-    let type = vertextypemap[current[0]][current[1]];
-    
-    if (type == 1) {
-        let index = insides[i].o;
-
-        // begin
-
-        let begin = points[index].slice(0, pos)
-        begin.push(new_point);
-
-        let inside_stuff = insides[i].g;
-        inside_stuff.push(inside_stuff[0]);
-        inside_stuff.push(new_point);
-
-        let end = points[index].slice(pos);
-
-        // end
-
-        let newpoints = begin.concat(inside_stuff.concat(end));
-
-        points[index] = newpoints;
-
-        while (vertexmap[current[0]][current[1]] == pos) {
-            vertexmap[current[0]][current[1]] += 1 + insides[i].g.length + 2;
-            current[0]--;
-        }
-    } else {
-        let index = type * -1;
-
-        if (pos == 0) { // hacky?
-            pos = insides[index].g.length;
-            vertexmap[current[0]][current[1]] = insides[index].g.length;
-        }
-
-        // begin
-
-        //console.log("index: " + index + ", type: " + type, "current: (" + current[0] + ", " + current[1] + ")");
-
-        let begin = insides[index].g.slice(0, pos)
-        begin.push(new_point);
-
-        let inside_stuff = insides[i].g.slice();
-        inside_stuff.push(inside_stuff[0]);
-        inside_stuff.push(new_point);
-
-        let end = insides[index].g.slice(pos);
-
-        // end
-
-        let newpoints = begin.concat(inside_stuff.concat(end));
-        // console.log(newpoints);
-
-        insides[index].g = newpoints;
-        connect_region(index);
-
-        while (vertexmap[current[0]][current[1]] == pos) {
-            vertexmap[current[0]][current[1]] += 1 + insides[i].g.length + 2;
-            current[0]--;
-        }
     }
 }
 
@@ -558,21 +469,49 @@ function lines () {
     }
 
     for (let i = 0; i < insides.length; i++) {
-        connect_region(i);
-    }
+        current = insides[i].s;
 
-    ctx.strokeStyle = "cyan";
-    for (let i = 0; i < points.length; i++) {
-        let edge = points[i];
+        do {
+            current[1]++;
+        } while (access(current) == false)
+        do {
+            current[1]++;
+        } while (access(current) == true)
 
-        ctx.beginPath();
-        ctx.moveTo(edge[0][0], edge[0][1])
+        let new_point = getCorner(current, NW);
+        let index = insides[i].o;
+        let pos = vertexmap[current[0]][current[1]];
+        let type = vertexmap[current[0]][current[1]];
 
-        for (let j = 1; j < edge.length; j++) {
-            ctx.lineTo(edge[j][0], edge[j][1]);
+        // begin
+
+        let begin = points[index].slice(0, pos)
+        begin.push(new_point);
+
+        let inside_stuff = insides[i].g;
+        inside_stuff.push(inside_stuff[0]);
+        inside_stuff.push(new_point);
+
+        let end = points[index].slice(pos);
+
+        // end
+
+        let newpoints = begin.concat(inside_stuff.concat(end));
+
+        points[index] = newpoints;
+
+        while (vertexmap[current[0]][current[1]] == pos) {
+            vertexmap[current[0]][current[1]] += 1 + insides[i].g.length + 2;
+            current[0]--;
         }
 
-        ctx.stroke();
+        ctx.fillStyle = "yellow";
+        ctx.fillRect(
+            current[0] * (tilesize + margin) + marker*2,
+            (current[1]) * (tilesize + margin) + marker*2,
+            tilesize - marker*4,
+            tilesize - marker*4
+        );
     }
 
     // create cs file
