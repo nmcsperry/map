@@ -221,7 +221,7 @@ function reset_everything () {
     else
         points = [];
 
-    for (let y = 0; y < size; y++) {
+    for (let y = 0; y < size + 1; y++) {
         let row = [];
         for (let x = 0; x < size; x++) {
             row.push(-1);
@@ -229,7 +229,7 @@ function reset_everything () {
         scanmap.push(row);
     }
 
-    for (let y = 0; y < size; y++) {
+    for (let y = 0; y < size + 1; y++) {
         let row = [];
         for (let x = 0; x < size; x++) {
             row.push(-1);
@@ -237,7 +237,7 @@ function reset_everything () {
         vertexmap.push(row);
     }
 
-    for (let y = 0; y < size; y++) {
+    for (let y = 0; y < size + 1; y++) {
         let row = [];
         for (let x = 0; x < size; x++) {
             row.push(2);
@@ -335,7 +335,7 @@ function trace (x, y, look, inside, n) {
                 // );
                 // ctx.fillStyle = "black";
 
-                // let val = new_geometry.length;
+                let val = new_geometry.length;
 
                 // let metrics = ctx.measureText(val);
                 // ctx.fillText(
@@ -343,8 +343,8 @@ function trace (x, y, look, inside, n) {
                 //     current[0] * (tilesize + margin) + tilesize/2 - metrics.width/2,
                 //     (current[1] + 1) * (tilesize + margin) + tilesize/2 + 4,
                 // );
-                // vertexmap[current[0]][current[1] + 1] = val;
-                // vertextypemap[current[0]][current[1] + 1] = 1;
+                vertexmap[current[0]][current[1] + 1] = val;
+                vertextypemap[current[0]][current[1] + 1] = 1;
             }
         }
         
@@ -358,7 +358,7 @@ function trace (x, y, look, inside, n) {
             // );
             // ctx.fillStyle = "black";
 
-            // let val = new_geometry.length;
+            let val = new_geometry.length;
 
             // let metrics = ctx.measureText(val);
             // ctx.fillText(
@@ -366,8 +366,8 @@ function trace (x, y, look, inside, n) {
             //     current[0] * (tilesize + margin) + tilesize/2 - metrics.width/2,
             //     (current[1] + 1) * (tilesize + margin) + tilesize/2 + 4,
             // );
-            // vertexmap[current[0]][current[1] + 1] = val;
-            // vertextypemap[current[0]][current[1] + 1] = insides.length * -1;
+            vertexmap[current[0]][current[1] + 1] = val;
+            vertextypemap[current[0]][current[1] + 1] = insides.length * -1;
         }
 
         if (look(current) && isWallAbove) { // we're turning ccwise
@@ -477,6 +477,9 @@ function connect_region (look, i) {
             current[0]--;
         }
     } else {
+        if (type == 2) { 
+            console.log("error");
+        }
         let index = type * -1;
 
         if (pos == 0) { // hacky?
@@ -486,7 +489,7 @@ function connect_region (look, i) {
 
         // begin
 
-        //console.log("index: " + index + ", type: " + type, "current: (" + current[0] + ", " + current[1] + ")");
+        console.log("index: " + index + ", type: " + type, "current: (" + current[0] + ", " + current[1] + ")");
 
         let begin = insides[index].g.slice(0, pos)
         begin.push(new_point);
