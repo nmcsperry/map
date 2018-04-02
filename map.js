@@ -9,14 +9,14 @@ const SE = 2;
 const SW = 3;
 
 var margin = 0;
-var tilesize = 40;
-var size = 15;
+var tilesize = 20;
+var size = 30;
 var marker = 4;
 
 var loops = 0;
-var loops_max = 200;
+var loops_max = 2000;
 var loops_2 = 0;
-var loops_max_2 = 200;
+var loops_max_2 = 2000;
 
 ctx.lineWidth = marker/2;
 
@@ -214,8 +214,12 @@ function reset_everything () {
     scanmap = [];
     vertexmap = [];
     vertextypemap = [];
-    points = [];
     insides = [];
+
+    if (doingwater) 
+        waterpoints = [];
+    else
+        points = [];
 
     for (let y = 0; y < size; y++) {
         let row = [];
@@ -244,10 +248,13 @@ function reset_everything () {
 }
 
 var points = [];
+var waterpoints = [];
 var insides = [];
 var ramps = [];
 
-function trace (x, y, inside, n) {
+function trace (x, y, look, inside, n) {
+
+    let pointsub = doingwater ? waterpoints : points;
     let current = [x, y]; 
 
     let tops = [];
@@ -258,7 +265,7 @@ function trace (x, y, inside, n) {
     loops = 0;
 
     // see if we should make a new boundry
-    if (access(current) && !access(add(current, normal))) {
+    if (look(current) && !look(add(current, normal))) {
         let corner;
         ctx.beginPath();
         corner = getCorner(current, inside ? SE : NW);
@@ -266,7 +273,7 @@ function trace (x, y, inside, n) {
     }
 
     do {
-        let isWallAbove = access(add(current, normal));
+        let isWallAbove = look(add(current, normal));
 
         // if (inside && normal[1] == starting_normal[1]) {
         //     ctx.fillStyle = "purple";
@@ -279,8 +286,8 @@ function trace (x, y, inside, n) {
         //     );
         // }
 
-        if ( (!inside && normal[1] == starting_normal[1] && access(current) ) ||
-             ( inside && normal[1] == starting_normal[1] && access(current) && !isWallAbove )
+        if ( (!inside && normal[1] == starting_normal[1] && look(current) ) ||
+             ( inside && normal[1] == starting_normal[1] && look(current) && !isWallAbove )
         ) {
             if (!inside) {
                 let drop = current.slice();
@@ -300,9 +307,9 @@ function trace (x, y, inside, n) {
             //         tilesize - marker*markmargin*2
             //     );
             // }
-        } else if (normal[1] == (inside ? -1 : 1) && access(current)) {
+        } else if (normal[1] == (inside ? -1 : 1) && look(current)) {
             if (inside && !isWallAbove) {
-                scanmap[current[0]][current[1] - 1] = (inside ? -1 : points.length);
+                scanmap[current[0]][current[1] - 1] = (inside ? -1 : pointsub.length);
 
                 // ctx.fillStyle = "lime";
                 // let markmargin = 1;
@@ -317,59 +324,59 @@ function trace (x, y, inside, n) {
 
             }
             if (!inside && !isWallAbove) {
-                scanmap[current[0]][current[1]] = (inside ? -1 : points.length);
+                scanmap[current[0]][current[1]] = (inside ? -1 : pointsub.length);
                 
-                ctx.fillStyle = "orange";
-                ctx.fillRect(
-                    current[0] * (tilesize + margin) + marker*2,
-                    (current[1] + 1) * (tilesize + margin) + marker*2,
-                    tilesize - marker*4,
-                    tilesize - marker*4
-                );
-                ctx.fillStyle = "black";
+                // ctx.fillStyle = "orange";
+                // ctx.fillRect(
+                //     current[0] * (tilesize + margin) + marker*2,
+                //     (current[1] + 1) * (tilesize + margin) + marker*2,
+                //     tilesize - marker*4,
+                //     tilesize - marker*4
+                // );
+                // ctx.fillStyle = "black";
 
-                let val = new_geometry.length;
+                // let val = new_geometry.length;
 
-                let metrics = ctx.measureText(val);
-                ctx.fillText(
-                    val,
-                    current[0] * (tilesize + margin) + tilesize/2 - metrics.width/2,
-                    (current[1] + 1) * (tilesize + margin) + tilesize/2 + 4,
-                );
-                vertexmap[current[0]][current[1] + 1] = val;
-                vertextypemap[current[0]][current[1] + 1] = 1;
+                // let metrics = ctx.measureText(val);
+                // ctx.fillText(
+                //     val,
+                //     current[0] * (tilesize + margin) + tilesize/2 - metrics.width/2,
+                //     (current[1] + 1) * (tilesize + margin) + tilesize/2 + 4,
+                // );
+                // vertexmap[current[0]][current[1] + 1] = val;
+                // vertextypemap[current[0]][current[1] + 1] = 1;
             }
         }
         
-        if (inside && normal[1] == 1 && !isWallAbove && access(current)) {
-            ctx.fillStyle = "orange";
-            ctx.fillRect(
-                current[0] * (tilesize + margin) + marker*2,
-                (current[1] + 1) * (tilesize + margin) + marker*2,
-                tilesize - marker*4,
-                tilesize - marker*4
-            );
-            ctx.fillStyle = "black";
+        if (inside && normal[1] == 1 && !isWallAbove && look(current)) {
+            // ctx.fillStyle = "orange";
+            // ctx.fillRect(
+            //     current[0] * (tilesize + margin) + marker*2,
+            //     (current[1] + 1) * (tilesize + margin) + marker*2,
+            //     tilesize - marker*4,
+            //     tilesize - marker*4
+            // );
+            // ctx.fillStyle = "black";
 
-            let val = new_geometry.length;
+            // let val = new_geometry.length;
 
-            let metrics = ctx.measureText(val);
-            ctx.fillText(
-                val,
-                current[0] * (tilesize + margin) + tilesize/2 - metrics.width/2,
-                (current[1] + 1) * (tilesize + margin) + tilesize/2 + 4,
-            );
-            vertexmap[current[0]][current[1] + 1] = val;
-            vertextypemap[current[0]][current[1] + 1] = insides.length * -1;
+            // let metrics = ctx.measureText(val);
+            // ctx.fillText(
+            //     val,
+            //     current[0] * (tilesize + margin) + tilesize/2 - metrics.width/2,
+            //     (current[1] + 1) * (tilesize + margin) + tilesize/2 + 4,
+            // );
+            // vertexmap[current[0]][current[1] + 1] = val;
+            // vertextypemap[current[0]][current[1] + 1] = insides.length * -1;
         }
 
-        if (access(current) && isWallAbove) { // we're turning ccwise
+        if (look(current) && isWallAbove) { // we're turning ccwise
             current = add(current, normal);
             normal = turnCC(normal);
 
             corner_pt = getCorner(current, getCornerType(normal));
             placePoint(corner_pt, new_geometry);
-        } else if (!access(current)) { // we're turning cwise
+        } else if (!look(current)) { // we're turning cwise
             normal = turnC(normal);
             current = sub(current, normal);
 
@@ -384,7 +391,7 @@ function trace (x, y, inside, n) {
     } while (loops < loops_max && !(current[0] == x && current[1] == y && normal[1] == starting_normal[1]));
 
     ctx.closePath();
-    ctx.strokeStyle= inside ? "red" : "black";
+    ctx.strokeStyle= inside ? "black" : "black";
     ctx.stroke();
 
     for (var i = 0; i < tops.length; i++) {
@@ -393,7 +400,7 @@ function trace (x, y, inside, n) {
             (!inside && scanmap[drop[0]][drop[1]] == -1) ||
             ( inside && scanmap[drop[0]][drop[1]] != -1)
         ) {
-            scanmap[drop[0]][drop[1]] = (inside ? -1 : points.length);
+            scanmap[drop[0]][drop[1]] = (inside ? -1 : pointsub.length);
             drop[1]++;
 
             // ctx.fillStyle = inside ? "indigo" : "cyan";
@@ -410,35 +417,36 @@ function trace (x, y, inside, n) {
     if (inside) {
          insides.push({ g: new_geometry.slice(), o: n, s: [x, y + 1]});
     } else {
-        points.push(new_geometry.slice());
+        pointsub.push(new_geometry.slice());
     }
 }
 
-function connect_region (i) {
+function connect_region (look, i) {
+    let pointsub = doingwater ? waterpoints : points;
     current = insides[i].s.slice();
 
-    ctx.fillStyle = "lime";
-    ctx.fillRect(
-        current[0] * (tilesize + margin) + marker*2,
-        (current[1]) * (tilesize + margin) + marker*2,
-        tilesize - marker*4,
-        tilesize - marker*4
-    );
+    // ctx.fillStyle = "lime";
+    // ctx.fillRect(
+    //     current[0] * (tilesize + margin) + marker*2,
+    //     (current[1]) * (tilesize + margin) + marker*2,
+    //     tilesize - marker*4,
+    //     tilesize - marker*4
+    // );
 
     do {
         current[1]++;
-    } while (scanmap[current[0]][current[1]] == -1);//  access(current) == false)
+    } while (scanmap[current[0]][current[1]] == -1);//  look(current) == false)
     do {
         current[1]++;
-    } while (access(current) == true)
+    } while (look(current) == true)
 
-    ctx.fillStyle = "yellow";
-    ctx.fillRect(
-        current[0] * (tilesize + margin) + marker*2,
-        (current[1]) * (tilesize + margin) + marker*2,
-        tilesize - marker*4,
-        tilesize - marker*4
-    );
+    // ctx.fillStyle = "yellow";
+    // ctx.fillRect(
+    //     current[0] * (tilesize + margin) + marker*2,
+    //     (current[1]) * (tilesize + margin) + marker*2,
+    //     tilesize - marker*4,
+    //     tilesize - marker*4
+    // );
 
     let new_point = getCorner(current, NW);
     let pos = vertexmap[current[0]][current[1]];
@@ -449,22 +457,22 @@ function connect_region (i) {
 
         // begin
 
-        let begin = points[index].slice(0, pos)
+        let begin = pointsub[index].slice(0, pos)
         begin.push(new_point);
 
         let inside_stuff = insides[i].g;
         inside_stuff.push(inside_stuff[0]);
         inside_stuff.push(new_point);
 
-        let end = points[index].slice(pos);
+        let end = pointsub[index].slice(pos);
 
         // end
 
-        let newpoints = begin.concat(inside_stuff.concat(end));
+        let newpointsub = begin.concat(inside_stuff.concat(end));
 
-        points[index] = newpoints;
+        pointsub[index] = newpointsub;
 
-        while (vertexmap[current[0]][current[1]] == pos) {
+        while (current[0] < 0 && vertexmap[current[0]][current[1]] == pos) {
             vertexmap[current[0]][current[1]] += 1 + insides[i].g.length + 2;
             current[0]--;
         }
@@ -491,10 +499,10 @@ function connect_region (i) {
 
         // end
 
-        let newpoints = begin.concat(inside_stuff.concat(end));
-        // console.log(newpoints);
+        let newpointsub = begin.concat(inside_stuff.concat(end));
+        // console.log(newpointsub);
 
-        insides[index].g = newpoints;
+        insides[index].g = newpointsub;
         connect_region(index);
 
         while (vertexmap[current[0]][current[1]] == pos) {
@@ -507,23 +515,25 @@ function connect_region (i) {
 function lines () {
     reset_everything();
 
+    let look = doingwater ? accessWater : access;
+
     let new_geometry = [];
 
     for (let x = 0; x < size; x++) {
         for (let y = 0; y < size; y++) {
             let current = [x, y]; 
 
-            let me = access([x, y]);
-            let n = access([x, y - 1]);
-            let s = access([x, y + 1]);
-            let w = access([x - 1, y]);
-            let e = access([x + 1, y]);
+            let me = look([x, y]);
+            let n = look([x, y - 1]);
+            let s = look([x, y + 1]);
+            let w = look([x - 1, y]);
+            let e = look([x + 1, y]);
 
             let other = n && s && w && e;
 
             if (!me || other || scanmap[x][y] != -1) continue;
 
-            trace(x, y, false);
+            trace(x, y, look, false);
         }
     }
 
@@ -531,11 +541,11 @@ function lines () {
         for (let y = 0; y < size; y++) {
             let current = [x, y]; 
 
-            let me = access([x, y]);
-            let n = access([x, y - 1]);
-            let s = access([x, y + 1]);
-            let w = access([x - 1, y]);
-            let e = access([x + 1, y]);
+            let me = look([x, y]);
+            let n = look([x, y - 1]);
+            let s = look([x, y + 1]);
+            let w = look([x - 1, y]);
+            let e = look([x + 1, y]);
 
             let other = n && s && w && e;
 
@@ -551,29 +561,32 @@ function lines () {
             //     tilesize - marker*4
             // );
 
-            trace(x, y - 1, true, scanmap[x][y]);
+            trace(x, y - 1, look, true, scanmap[x][y]);
 
             if (stuff) alert(x + ", " + y);
         }
     }
 
     for (let i = 0; i < insides.length; i++) {
-        connect_region(i);
+        connect_region(look, i);
     }
 
-    ctx.strokeStyle = "cyan";
-    for (let i = 0; i < points.length; i++) {
-        let edge = points[i];
+    // ctx.strokeStyle = "cyan";
+    // for (let i = 0; i < points.length; i++) {
+    //     let edge = points[i];
 
-        ctx.beginPath();
-        ctx.moveTo(edge[0][0], edge[0][1])
+    //     ctx.beginPath();
+    //     ctx.moveTo(edge[0][0], edge[0][1])
 
-        for (let j = 1; j < edge.length; j++) {
-            ctx.lineTo(edge[j][0], edge[j][1]);
-        }
+    //     for (let j = 1; j < edge.length; j++) {
+    //         ctx.lineTo(edge[j][0], edge[j][1]);
+    //     }
 
-        ctx.stroke();
-    }
+    //     ctx.stroke();
+    // }
+}
+
+function makefiles() {
 
     // create cs file
     cs = "";
@@ -620,6 +633,26 @@ function lines () {
         }
     }
 
+    // floor/water geometry
+    for (let j = 0; j < waterpoints.length; j++) {
+        geometry_offsets.push(counter);
+
+        let geometry = waterpoints[j];
+
+        for (let i = 0; i < geometry.length; i++) {
+            let px = geometry[i][0]/scale - size/2;
+            let py = geometry[i][1]/scale - size/2;
+            obj += "v " + (px).toFixed(2) + " 0.0 " + (py).toFixed(2) + "%0A";
+            counter++;
+        }
+        for (let i = 0; i < geometry.length; i++) {
+            let px = geometry[i][0]/scale - size/2;
+            let py = geometry[i][1]/scale - size/2;
+            obj += "v " + (px).toFixed(2) + " -1.0 " + (py).toFixed(2) + "%0A";
+            counter++;
+        }
+    }
+
     // ramps
     for (let j = 0; j < ramps.length; j++) {
         geometry_offsets.push(counter);
@@ -634,15 +667,37 @@ function lines () {
         }
     }
 
-    obj += "v -" + (size/2).toFixed(2) + " 0.0 " + (size/2).toFixed(2) + "%0A";
-    obj += "v " + (size/2).toFixed(2) + " 0.0 " + (size/2).toFixed(2) + "%0A";
-    obj += "v " + (size/2).toFixed(2) + " 0.0 -" + (size/2).toFixed(2) + "%0A";
-    obj += "v -" + (size/2).toFixed(2) + " 0.0 -" + (size/2).toFixed(2) + "%0A";
+    // obj += "v -" + (size/2).toFixed(2) + " 0.0 " + (size/2).toFixed(2) + "%0A";
+    // obj += "v " + (size/2).toFixed(2) + " 0.0 " + (size/2).toFixed(2) + "%0A";
+    // obj += "v " + (size/2).toFixed(2) + " 0.0 -" + (size/2).toFixed(2) + "%0A";
+    // obj += "v -" + (size/2).toFixed(2) + " 0.0 -" + (size/2).toFixed(2) + "%0A";
 
     // walls
     for (let j = 0; j < points.length; j++) {
         let off = geometry_offsets[j];
         let geometry = points[j];
+
+        // top face
+        obj += "f ";
+        for (let i = geometry.length - 1; i >= 0; i--) {
+            obj += (i+1+off) + " "
+        }
+        obj += "%0A";
+
+        // sides
+        for (let i = 0; i < geometry.length - 1; i++) {
+            obj += "f " + (i+2+geometry.length+off) + " " + (i+1+geometry.length+off) +
+                " " + (i+1+off) + " " + (i+2+off) + "%0A";
+        }
+
+        obj += "f " + (geometry.length+1+off) + " " +
+            (geometry.length*2+off) + " " + (geometry.length+off) + " " + (1+off) + "%0A";
+    }
+
+    // water and floor
+    for (let j = 0; j < waterpoints.length; j++) {
+        let off = geometry_offsets[j + points.length];
+        let geometry = waterpoints[j];
 
         // top face
         obj += "f ";
@@ -674,8 +729,8 @@ function lines () {
         obj += "%0A";
     }
 
-    // ground
-    obj += "f " + (counter+1) + " " + (counter+2) + " " + (counter+3) + " " + (counter+4) + "%0A";
+    // // ground
+    // obj += "f " + (counter+1) + " " + (counter+2) + " " + (counter+3) + " " + (counter+4) + "%0A";
 
     document.getElementById("download").href = "data:text/html," + obj;
 }
@@ -714,6 +769,8 @@ function make_ramp (x, y, me) {
 
     ramps.push(new_ramp);
 }
+
+var doingwater = false;
 
 function update () {
     ctx.clearRect(0, 0, 800, 800);
@@ -789,7 +846,12 @@ function update () {
         }
     }
 
+    doingwater = false;
     lines();
+    doingwater = true;
+    lines();
+
+    makefiles();
 }
 
 function getCorner (pos, corner) {
@@ -888,6 +950,15 @@ function access (pos) {
     if (x < 0 || x >= size) return false;
     if (y < 0 || y >= size) return false;
     return map[y][x] == 1;
+}
+
+function accessWater (pos) {
+    let x = pos[0];
+    let y = pos[1];
+
+    if (x < 0 || x >= size) return false;
+    if (y < 0 || y >= size) return false;
+    return map[y][x] != 6;
 }
 
 function access_tile (pos) {
