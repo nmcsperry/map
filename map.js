@@ -1,40 +1,42 @@
+// canvas stuff
 let c = document.getElementById("canvas");
 let ctx = c.getContext("2d");
 
-ctx.strokeStyle = "red";
-
+// constants
 const NW = 0;
 const NE = 1;
 const SE = 2;
 const SW = 3;
 
-var margin = 0;
-var tilesize = 20;
-var size = 30;
-var marker = 4;
-
-var loops = 0;
-var loops_max = 2000;
-var loops_2 = 0;
-var loops_max_2 = 2000;
+const margin = 0; // margin doesn't actually really work
+const tilesize = 20;
+const size = 30;
+const marker = 4;
 
 ctx.lineWidth = marker/2;
+ctx.font = "bold 12px Courier";
 
-var center = [0, 0];
-
-var stuff = false;
-
-let obj = "";
-
-let texmap = [
-    [0],
-];
+// these were used for debug but are now unused
+var loops = 0;
+var loops_max = 2000;
 
 let scanmap = [];
 let vertexmap = [];
 let vertextypemap = [];
 
+var points = [];
+var waterpoints = [];
+
+var insides = [];
+var ramps = [];
+
 reset_everything();
+
+// this is to start up the map, the texmap stuff is not important, it was for
+// debug and making patterns for fun
+let texmap = [
+    [6],
+];
 
 let map = [];
 for (let y = 0; y < size; y++) {
@@ -45,6 +47,12 @@ for (let y = 0; y < size; y++) {
     map.push(row);
 }
 
+
+// all these variables are for painting and selecting tile types
+// 'metapaint' is like what tile type, i called it metapaint because there was
+// already a 'paint', so the metapaint is what type of thing you are going to
+// paint with (think 'ramp') and paint is what specifc thing you are placing
+// (think 'upwards facing ramp')
 var previous_tile_ele_left = 0;
 var previous_tile_ele_right = 0;
 
@@ -52,15 +60,21 @@ var paint = -1;
 var metapaint_left = 0;
 var metapaint_right = 0;
 
+// this function is for picking tile options on the side
 function select_tile (e) {
 
+    // selection_type is left or right click, 1 = left, 0 = right
     let selection_type = 1;
     if(e.which == 3) selection_type = 0;
 
+    // what did they click
     let ele = e.target;
 
     if (ele.className == "dontclick") ele = ele.parentElement;
 
+    // for each side the way it works is it sets whatever one was selected
+    // before as normal and the one you just clicked as selected, and then
+    // there is some other stuff for the 'both' selection
     if (selection_type == 1) {
         if (previous_tile_ele_left != 0) {
             if (previous_tile_ele_left.className == "both") {
@@ -85,6 +99,7 @@ function select_tile (e) {
     }
     else ele.className = (selection_type == 1) ? "active" : "rightactive";
 
+    // sets the 'metapaint', which was discussed at the top
     if (selection_type == 1) {
         switch(tile_type) {
             case "water": metapaint_left = 2; break;
@@ -102,16 +117,17 @@ function select_tile (e) {
     }
 }
 
+// start up stuff to select the default things
 select_tile({which: 0, target: document.getElementById("starttileleft")});
 select_tile({which: 3, target: document.getElementById("starttileright")});
 
+// add the event listeners to the tile type selection things
 var tiles = document.getElementsByTagName("p");
-
 for (let i = 0; i < tiles.length; i++) {
     tiles[i].addEventListener("mousedown", select_tile);
 }
 
-
+// event listener for painting
 c.addEventListener("mousedown", function (e) {
     let cursorX = e.pageX - this.offsetLeft;
     let cursorY = e.pageY - this.offsetTop;
@@ -128,7 +144,7 @@ c.addEventListener("mousedown", function (e) {
         case 2: paint = 6; break;
         case 3:
             switch (map[y][x]) {
-                case 0: case 1:
+                case 0: case 1: case 6:
                     let n = access([x, y - 1]);
                     let s = access([x, y + 1]);
                     let e = access([x - 1, y]);
@@ -153,13 +169,16 @@ c.addEventListener("mousedown", function (e) {
     if (paint != -1)
         map[y][x] = paint;
 
+    // when you click update the image to match your changes
     update();
 });
 
+// when they let go of the mouse button stop painting
 c.addEventListener("mouseup", function (e) {
     paint = -1;
 });
 
+// whenever they move the mouse, paint with whatever they had selected
 c.addEventListener("mousemove", function (e) {
     let cursorX = e.pageX - this.offsetLeft;
     let cursorY = e.pageY - this.offsetTop;
@@ -175,6 +194,7 @@ c.addEventListener("mousemove", function (e) {
     }
 });
 
+// this was used for debug
 window.onload = function () {
     window.addEventListener("keydown", function (e) {
         // console.log(e.keyCode);
@@ -183,9 +203,6 @@ window.onload = function () {
         update();
     }, false);
 }
-
-ctx.font = "bold 12px Courier";
-
 update();
 
 function add (v1, v2) {
@@ -196,19 +213,21 @@ function sub (v1, v2) {
     return [v1[0] - v2[0], v1[1] - v2[1]];
 }
 
-function turnC (v1) {
+function turn_c (v1) {
     // [0, -1]
     // [1,  0]
     return [-v1[1], v1[0]];
 }
 
-function turnCC (v1) {
+function turn_cc (v1) {
     // [ 0, 1]
     // [-1, 0]
     return [v1[1], -v1[0]];
 }
 
 function reset_everything () {
+    // reset all the temp variables we use when we trace
+
     loops = 0;
 
     scanmap = [];
@@ -216,7 +235,8 @@ function reset_everything () {
     vertextypemap = [];
     insides = [];
 
-    if (doingwater) 
+    // if we're doing water we don't want to replace the points
+    if (doing_water) 
         waterpoints = [];
     else
         points = [];
@@ -247,14 +267,9 @@ function reset_everything () {
 
 }
 
-var points = [];
-var waterpoints = [];
-var insides = [];
-var ramps = [];
-
 function trace (x, y, look, inside, n) {
 
-    let pointsub = doingwater ? waterpoints : points;
+    let pointsub = doing_water ? waterpoints : points;
     let current = [x, y]; 
 
     let tops = [];
@@ -268,24 +283,15 @@ function trace (x, y, look, inside, n) {
     if (look(current) && !look(add(current, normal))) {
         let corner;
         ctx.beginPath();
-        corner = getCorner(current, inside ? SE : NW);
+        corner = get_corner(current, inside ? SE : NW);
         ctx.moveTo(corner[0], corner[1]);
     }
 
+    // move around the boundry
     do {
         let isWallAbove = look(add(current, normal));
 
-        // if (inside && normal[1] == starting_normal[1]) {
-        //     ctx.fillStyle = "purple";
-        //     let markmargin = 4;
-        //     ctx.fillRect(
-        //         current[0] * (tilesize + margin) + 5,
-        //         current[1] * (tilesize + margin),
-        //         tilesize - marker*markmargin*2,
-        //         tilesize - marker*markmargin*2
-        //     );
-        // }
-
+        // mark where the tops of the region are
         if ( (!inside && normal[1] == starting_normal[1] && look(current) ) ||
              ( inside && normal[1] == starting_normal[1] && look(current) && !isWallAbove )
         ) {
@@ -296,104 +302,52 @@ function trace (x, y, look, inside, n) {
                 let drop = add(current.slice(), normal);
                 tops.push(drop);
             }
-
-            // if (inside) {
-            //     ctx.fillStyle = "pink";
-            //     let markmargin = 4;
-            //     ctx.fillRect(
-            //         current[0] * (tilesize + margin),
-            //         (current[1] + 1) * (tilesize + margin),
-            //         tilesize - marker*markmargin*2,
-            //         tilesize - marker*markmargin*2
-            //     );
-            // }
-        } else if (normal[1] == (inside ? -1 : 1) && look(current)) {
+        } else if (normal[1] == (inside ? -1 : 1) && look(current)) { // also mark what vertex we're on
             if (inside && !isWallAbove) {
                 scanmap[current[0]][current[1] - 1] = (inside ? -1 : pointsub.length);
-
-                // ctx.fillStyle = "lime";
-                // let markmargin = 1;
-
-                // let newcoolthing = add(current, normal);
-                // ctx.fillRect(
-                //     newcoolthing[0] * (tilesize + margin) + marker*markmargin,
-                //     newcoolthing[1] * (tilesize + margin) + marker*markmargin,
-                //     tilesize - marker*markmargin*2,
-                //     tilesize - marker*markmargin*2
-                // );
-
             }
             if (!inside && !isWallAbove) {
                 scanmap[current[0]][current[1]] = (inside ? -1 : pointsub.length);
-                
-                // ctx.fillStyle = "orange";
-                // ctx.fillRect(
-                //     current[0] * (tilesize + margin) + marker*2,
-                //     (current[1] + 1) * (tilesize + margin) + marker*2,
-                //     tilesize - marker*4,
-                //     tilesize - marker*4
-                // );
-                // ctx.fillStyle = "black";
 
                 let val = new_geometry.length;
 
-                // let metrics = ctx.measureText(val);
-                // ctx.fillText(
-                //     val,
-                //     current[0] * (tilesize + margin) + tilesize/2 - metrics.width/2,
-                //     (current[1] + 1) * (tilesize + margin) + tilesize/2 + 4,
-                // );
                 vertexmap[current[0]][current[1] + 1] = val;
                 vertextypemap[current[0]][current[1] + 1] = 1;
             }
         }
         
         if (inside && normal[1] == 1 && !isWallAbove && look(current)) {
-            // ctx.fillStyle = "orange";
-            // ctx.fillRect(
-            //     current[0] * (tilesize + margin) + marker*2,
-            //     (current[1] + 1) * (tilesize + margin) + marker*2,
-            //     tilesize - marker*4,
-            //     tilesize - marker*4
-            // );
-            // ctx.fillStyle = "black";
-
             let val = new_geometry.length;
 
-            // let metrics = ctx.measureText(val);
-            // ctx.fillText(
-            //     val,
-            //     current[0] * (tilesize + margin) + tilesize/2 - metrics.width/2,
-            //     (current[1] + 1) * (tilesize + margin) + tilesize/2 + 4,
-            // );
             vertexmap[current[0]][current[1] + 1] = val;
             vertextypemap[current[0]][current[1] + 1] = insides.length * -1;
         }
 
         if (look(current) && isWallAbove) { // we're turning ccwise
             current = add(current, normal);
-            normal = turnCC(normal);
+            normal = turn_cc(normal);
 
-            corner_pt = getCorner(current, getCornerType(normal));
+            corner_pt = get_corner(current, get_corner_type(normal));
             placePoint(corner_pt, new_geometry);
         } else if (!look(current)) { // we're turning cwise
-            normal = turnC(normal);
+            normal = turn_c(normal);
             current = sub(current, normal);
 
-            corner_pt = getCorner(current, getCornerType(normal));
+            corner_pt = get_corner(current, get_corner_type(normal));
             placePoint(corner_pt, new_geometry);
         } else { // we're going straight
-            current = add(current, turnC(normal));
+            current = add(current, turn_c(normal));
         }
 
-        // console.log(current[0] + ", " + current[1] + ". target: " + x + ", " + y);
         loops++;
-    } while (loops < loops_max && !(current[0] == x && current[1] == y && normal[1] == starting_normal[1]));
+
+    } while (/*loops < loops_max &&*/ !(current[0] == x && current[1] == y && normal[1] == starting_normal[1]));
 
     ctx.closePath();
-    ctx.strokeStyle= inside ? "black" : "black";
+    ctx.strokeStyle = "black";
     ctx.stroke();
 
+    // start at each of the tops we marked go down and mark everywhere inside
     for (var i = 0; i < tops.length; i++) {
         drop = tops[i];
         while (
@@ -402,15 +356,6 @@ function trace (x, y, look, inside, n) {
         ) {
             scanmap[drop[0]][drop[1]] = (inside ? -1 : pointsub.length);
             drop[1]++;
-
-            // ctx.fillStyle = inside ? "indigo" : "cyan";
-            // let markmargin = inside ? 3 : 2;
-            // ctx.fillRect(
-            //     drop[0] * (tilesize + margin) + marker*markmargin,
-            //     drop[1] * (tilesize + margin) + marker*markmargin,
-            //     tilesize - marker*markmargin*2,
-            //     tilesize - marker*markmargin*2
-            // );
         }
     }
     
@@ -421,41 +366,26 @@ function trace (x, y, look, inside, n) {
     }
 }
 
+// connect one of the inner regions to the outside of the region
 function connect_region (look, i) {
-    let pointsub = doingwater ? waterpoints : points;
+    // we want to know which thing we are going to connect to
+    let pointsub = doing_water ? waterpoints : points;
     current = insides[i].s.slice();
-
-    // ctx.fillStyle = "lime";
-    // ctx.fillRect(
-    //     current[0] * (tilesize + margin) + marker*2,
-    //     (current[1]) * (tilesize + margin) + marker*2,
-    //     tilesize - marker*4,
-    //     tilesize - marker*4
-    // );
 
     do {
         current[1]++;
-    } while (scanmap[current[0]][current[1]] == -1);//  look(current) == false)
+    } while (scanmap[current[0]][current[1]] == -1);
     do {
         current[1]++;
     } while (look(current) == true)
 
-    // ctx.fillStyle = "yellow";
-    // ctx.fillRect(
-    //     current[0] * (tilesize + margin) + marker*2,
-    //     (current[1]) * (tilesize + margin) + marker*2,
-    //     tilesize - marker*4,
-    //     tilesize - marker*4
-    // );
-
-    let new_point = getCorner(current, NW);
+    let new_point = get_corner(current, NW);
     let pos = vertexmap[current[0]][current[1]];
     let type = vertextypemap[current[0]][current[1]];
     
-    if (type == 1) {
+    // are we connecting to an outside border or an inside border?
+    if (type == 1) { // outside
         let index = insides[i].o;
-
-        // begin
 
         let begin = pointsub[index].slice(0, pos)
         begin.push(new_point);
@@ -466,8 +396,6 @@ function connect_region (look, i) {
 
         let end = pointsub[index].slice(pos);
 
-        // end
-
         let newpointsub = begin.concat(inside_stuff.concat(end));
 
         pointsub[index] = newpointsub;
@@ -476,7 +404,7 @@ function connect_region (look, i) {
             vertexmap[current[0]][current[1]] += 1 + insides[i].g.length + 2;
             current[0]--;
         }
-    } else {
+    } else { // inside
         if (type == 2) { 
             console.log("error");
         }
@@ -487,10 +415,6 @@ function connect_region (look, i) {
             vertexmap[current[0]][current[1]] = insides[index].g.length;
         }
 
-        // begin
-
-        console.log("index: " + index + ", type: " + type, "current: (" + current[0] + ", " + current[1] + ")");
-
         let begin = insides[index].g.slice(0, pos)
         begin.push(new_point);
 
@@ -500,10 +424,7 @@ function connect_region (look, i) {
 
         let end = insides[index].g.slice(pos);
 
-        // end
-
         let newpointsub = begin.concat(inside_stuff.concat(end));
-        // console.log(newpointsub);
 
         insides[index].g = newpointsub;
         connect_region(index);
@@ -515,13 +436,17 @@ function connect_region (look, i) {
     }
 }
 
+// this function figures out boundries
 function lines () {
     reset_everything();
 
-    let look = doingwater ? accessWater : access;
+    // this function is called twice, once when we're doing the walls, and once
+    // when we're doing the water
+    let look = doing_water ? access_water : access;
 
     let new_geometry = [];
 
+    // figure out the outsides
     for (let x = 0; x < size; x++) {
         for (let y = 0; y < size; y++) {
             let current = [x, y]; 
@@ -540,6 +465,7 @@ function lines () {
         }
     }
 
+    // figure out the insides
     for (let x = 0; x < size; x++) {
         for (let y = 0; y < size; y++) {
             let current = [x, y]; 
@@ -556,43 +482,20 @@ function lines () {
 
             if (me || other) continue;
 
-            // ctx.fillStyle = "yellow";
-            // ctx.fillRect(
-            //     current[0] * (tilesize + margin) + marker*2,
-            //     (current[1] - 1) * (tilesize + margin) + marker*2,
-            //     tilesize - marker*4,
-            //     tilesize - marker*4
-            // );
-
             trace(x, y - 1, look, true, scanmap[x][y]);
-
-            if (stuff) alert(x + ", " + y);
         }
     }
 
+    // connect the insides to the outsides
     for (let i = 0; i < insides.length; i++) {
         connect_region(look, i);
     }
-
-    // ctx.strokeStyle = "cyan";
-    // for (let i = 0; i < points.length; i++) {
-    //     let edge = points[i];
-
-    //     ctx.beginPath();
-    //     ctx.moveTo(edge[0][0], edge[0][1])
-
-    //     for (let j = 1; j < edge.length; j++) {
-    //         ctx.lineTo(edge[j][0], edge[j][1]);
-    //     }
-
-    //     ctx.stroke();
-    // }
 }
 
-function makefiles() {
+function make_files() {
 
     // create cs file
-    cs = "";
+    let cs = "";
     cs += "using System.Collections;%0Ausing System.Collections.Generic;%0Ausing UnityEngine;%0A%0Apublic static class MapInfo {%0A%09public static int[,] mapData = new int[,] {"
     
     for (let j = 0; j < size; j++) {
@@ -611,7 +514,7 @@ function makefiles() {
     // create obj file
     
     let scale = tilesize;
-    obj = "";
+    let obj = "";
 
     geometry_offsets = [];
 
@@ -670,11 +573,6 @@ function makefiles() {
         }
     }
 
-    // obj += "v -" + (size/2).toFixed(2) + " 0.0 " + (size/2).toFixed(2) + "%0A";
-    // obj += "v " + (size/2).toFixed(2) + " 0.0 " + (size/2).toFixed(2) + "%0A";
-    // obj += "v " + (size/2).toFixed(2) + " 0.0 -" + (size/2).toFixed(2) + "%0A";
-    // obj += "v -" + (size/2).toFixed(2) + " 0.0 -" + (size/2).toFixed(2) + "%0A";
-
     // walls
     for (let j = 0; j < points.length; j++) {
         let off = geometry_offsets[j];
@@ -721,7 +619,7 @@ function makefiles() {
 
     // ramps
     for (let j = 0; j < ramps.length; j++) {
-        let off = geometry_offsets[j + points.length];
+        let off = geometry_offsets[j + points.length + waterpoints.length];
         let geometry = ramps[j];
 
         // top face
@@ -731,9 +629,6 @@ function makefiles() {
         }
         obj += "%0A";
     }
-
-    // // ground
-    // obj += "f " + (counter+1) + " " + (counter+2) + " " + (counter+3) + " " + (counter+4) + "%0A";
 
     document.getElementById("download").href = "data:text/html," + obj;
 }
@@ -773,13 +668,14 @@ function make_ramp (x, y, me) {
     ramps.push(new_ramp);
 }
 
-var doingwater = false;
+var doing_water = false;
 
 function update () {
     ctx.clearRect(0, 0, 800, 800);
 
     ramps = [];
 
+    // this is just rendering stuff for the on screen grid
     for (let x = 0; x < size; x++) {
         for (let y = 0; y < size; y++) {
             let me = access_tile([x, y])
@@ -787,9 +683,9 @@ function update () {
             switch (me) {
                 case 0: ctx.fillStyle = "green"; break; // floor
                 case 1: ctx.fillStyle = "white"; break; // wall
-                case 6: ctx.fillStyle = "cyan"; break; // wall
+                case 6: ctx.fillStyle = "cyan"; break; // water
 
-                // ramp
+                // ramps
                 case 2:
                     var grd = ctx.createLinearGradient(
                         x * (tilesize + margin),
@@ -849,15 +745,20 @@ function update () {
         }
     }
 
-    doingwater = false;
+    doing_water = false;
     lines();
-    doingwater = true;
+    doing_water = true;
     lines();
 
-    makefiles();
+    make_files();
 }
 
-function getCorner (pos, corner) {
+// these next three functions are helper functions. to help with trace mostly
+
+// given a tile coordinate and which corner, gives the screen coordiantes of
+// that corner (the program should probably be revised so this doesn't really
+// happen)
+function get_corner (pos, corner) {
     let x = pos[0];
     let y = pos[1];
 
@@ -875,7 +776,8 @@ function getCorner (pos, corner) {
             y * (tilesize + margin) + tilesize];
 }
 
-function getSide (dir) {
+// given a direction, gives two points that makes a side
+function get_side (dir) {
     let corner1;
     let corner2;
 
@@ -902,7 +804,8 @@ function getSide (dir) {
     return [corner1, corner2];
 }
 
-function getCornerType (dir) {
+// given a direction, gives where to place a point
+function get_corner_type (dir) {
     let corner;
 
     if (dir[0] == 0 && dir[1] == -1) { // north -> NW
@@ -921,31 +824,12 @@ function getCornerType (dir) {
         corner = SE;
     }
 
-    // console.log(dir + " -> " + corner);
-
     return corner;
 }
 
-function drawSide(current, normal) {
-    return;
-    let sides = getSide(turnC(normal));
-    corner1 = getCorner(current, sides[0]);
-    corner2 = getCorner(current, sides[1]);
+// access and access water are used to make the boundries
 
-    let side_width = corner1[0] - corner2[0];
-    let side_height = corner1[1] - corner2[1];
-
-    if (side_width == 0) side_width = 5;
-    if (side_height == 0) side_height = 5;
-
-    ctx.fillRect(
-        corner2[0], // current[0] * (tilesize + margin) + marker*2,
-        corner2[1], // current[1] * (tilesize + margin) + marker*2,
-        side_width,
-        side_height
-    );
-}
-
+// true or false means if something is a wall or not
 function access (pos) {
     let x = pos[0];
     let y = pos[1];
@@ -955,7 +839,8 @@ function access (pos) {
     return map[y][x] == 1;
 }
 
-function accessWater (pos) {
+// true or false means if something is not water or not
+function access_water (pos) {
     let x = pos[0];
     let y = pos[1];
 
@@ -972,3 +857,21 @@ function access_tile (pos) {
     if (y < 0 || y >= size) return 0;
     return map[y][x];
 }
+
+// this is some code useful for debugging that i dont want to delete
+
+// ctx.fillStyle = "orange";
+// ctx.fillRect(
+//     current[0] * (tilesize + margin) + marker*2,
+//     (current[1] + 1) * (tilesize + margin) + marker*2,
+//     tilesize - marker*4,
+//     tilesize - marker*4
+// );
+// ctx.fillStyle = "black";
+
+// let metrics = ctx.measureText(val);
+// ctx.fillText(
+//     val,
+//     current[0] * (tilesize + margin) + tilesize/2 - metrics.width/2,
+//     (current[1] + 1) * (tilesize + margin) + tilesize/2 + 4,
+// );
